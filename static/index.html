@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scholar Pulse — Proactive Learning Intelligence</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Control Bar -->
+  <header id="top-bar" class="top-bar">
+    <div class="top-bar-left">
+      <div class="brand">
+        <span class="brand-icon">⚡</span>
+        <div class="brand-text">
+          <h1 class="brand-title">Scholar Pulse</h1>
+          <span class="brand-subtitle">Proactive Intelligence Layer</span>
+        </div>
+      </div>
+
+      <div class="control-item student-selector-wrapper">
+        <label for="student-select" class="control-label">Student:</label>
+        <select id="student-select" class="form-select" aria-label="Select student scenario">
+          <!-- Populated dynamically via JS -->
+        </select>
+        <span id="student-risk-badge" class="badge badge-risk-healthy">Loading...</span>
+      </div>
+    </div>
+
+    <div class="top-bar-center">
+      <div class="control-item mode-wrapper">
+        <span id="llm-mode-badge" class="badge badge-mode">
+          <span class="status-dot"></span>
+          <span id="llm-mode-text">LLM: template</span>
+        </span>
+      </div>
+
+      <div class="control-item clock-wrapper">
+        <span class="clock-icon">📅</span>
+        <span id="sim-date-display" class="sim-clock-text">2026-11-18 10:00 UTC</span>
+      </div>
+    </div>
+
+    <div class="top-bar-right">
+      <div class="action-btn-group">
+        <button id="btn-evaluate" class="btn btn-primary" title="Run detect, decide, guardrails, and act loop">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-text">Evaluate now</span>
+        </button>
+        <button id="btn-advance-1" class="btn btn-secondary" title="Advance simulated clock by 24 hours">
+          <span class="btn-icon">▶</span>
+          <span class="btn-text">+1 Day</span>
+        </button>
+        <button id="btn-advance-3" class="btn btn-secondary" title="Advance simulated clock by 72 hours (48h follow-up check)">
+          <span class="btn-icon">⏩</span>
+          <span class="btn-text">+3 Days</span>
+        </button>
+        <button id="btn-reset" class="btn btn-danger-outline" title="Reset all scenarios to initial seed state">
+          <span class="btn-icon">🔄</span>
+          <span class="btn-text">Reset</span>
+        </button>
+      </div>
+
+      <div class="view-toggle-group" role="tablist" aria-label="View selection">
+        <button id="tab-student" class="tab-btn active" role="tab" aria-selected="true" aria-controls="student-view-container">
+          👤 Student view
+        </button>
+        <button id="tab-cohort" class="tab-btn" role="tab" aria-selected="false" aria-controls="cohort-view-container">
+          👥 Cohort view
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="main-container">
+    <!-- View 1: 3-Column Student View -->
+    <div id="student-view-container" class="view-panel active" role="tabpanel" aria-labelledby="tab-student">
+      <div class="student-grid">
+        
+        <!-- ================= Column 1: Activity & Roadmap ================= -->
+        <section id="col-activity-roadmap" class="grid-column">
+          <!-- Student Profile Summary -->
+          <div id="student-summary-card" class="card student-card">
+            <div class="student-card-header">
+              <div class="student-avatar-container">
+                <span id="student-avatar-letter" class="avatar-letter">A</span>
+              </div>
+              <div class="student-meta">
+                <h2 id="student-name" class="student-name">Loading...</h2>
+                <div class="student-track-wrap">
+                  <span id="student-track" class="student-track">Track</span>
+                  <span id="student-consent-badge" class="badge badge-consent">Consent</span>
+                </div>
+              </div>
+            </div>
+            <div class="student-goal-box">
+              <span class="goal-label">Goal:</span>
+              <p id="student-goal" class="goal-text">Loading student goal...</p>
+            </div>
+            <div class="student-stats-row">
+              <div class="stat-pill">
+                <span class="stat-label">Active Hours:</span>
+                <span id="student-hours" class="stat-val">9:00 - 22:00</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Weekly Cap:</span>
+                <span id="student-capacity" class="stat-val">600 min</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Nudges Used:</span>
+                <span id="student-nudge-count" class="stat-val">0 / 3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 30-Day Activity Timeline -->
+          <div id="activity-timeline-card" class="card timeline-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">📊</span>
+                <h3 class="card-title">30-Day Activity Timeline</h3>
+              </div>
+              <span id="timeline-window-label" class="card-subtitle">Last 30 days</span>
+            </div>
+
+            <div class="timeline-summary-stats">
+              <div class="t-stat">
+                <span class="t-stat-val" id="timeline-total-sessions">0</span>
+                <span class="t-stat-label">Sessions</span>
+              </div>
+              <div class="t-stat">
+                <span class="t-stat-val text-success" id="timeline-total-passes">0</span>
+                <span class="t-stat-label">Passes</span>
+              </div>
+              <div class="t-stat">
+                <span class="t-stat-val text-danger" id="timeline-total-fails">0</span>
+                <span class="t-stat-label">Fails</span>
+              </div>
+              <div class="t-stat">
+                <span class="t-stat-val text-info" id="timeline-total-minutes">0m</span>
+                <span class="t-stat-label">Study Time</span>
+              </div>
+            </div>
+
+            <!-- Visual Bar Timeline -->
+            <div class="timeline-visual-wrapper">
+              <div class="timeline-legend">
+                <span class="legend-item"><span class="legend-dot dot-pass"></span> Pass</span>
+                <span class="legend-item"><span class="legend-dot dot-fail"></span> Fail</span>
+                <span class="legend-item"><span class="legend-dot dot-session"></span> Session</span>
+                <span class="legend-item"><span class="legend-dot dot-inactive"></span> Inactive</span>
+              </div>
+
+              <div id="timeline-bars-container" class="timeline-bars-container" aria-label="Daily activity bars over 30 days">
+                <!-- 30 Daily columns dynamically rendered -->
+              </div>
+            </div>
+
+            <!-- Timeline Detail Callout on Hover / Click -->
+            <div id="timeline-inspection-box" class="timeline-inspection-box">
+              <span class="inspect-hint">💡 Hover or click any day bar to inspect sessions and attempt error signatures.</span>
+            </div>
+          </div>
+
+          <!-- Current Roadmap -->
+          <div id="roadmap-card" class="card roadmap-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">🗺️</span>
+                <h3 class="card-title">Current Learning Roadmap</h3>
+              </div>
+              <span id="roadmap-count-badge" class="badge badge-neutral">0 items</span>
+            </div>
+            <div id="roadmap-list" class="roadmap-list">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= Column 2: Detect & Decide ================= -->
+        <section id="col-detect-decide" class="grid-column">
+          <!-- Signal Gauges -->
+          <div id="signals-card" class="card signals-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">📡</span>
+                <h3 class="card-title">Real-Time Signal Gauges</h3>
+              </div>
+              <span id="signals-trigger-summary" class="badge badge-risk-healthy">All Healthy</span>
+            </div>
+            <p class="section-desc">Deterministic scoring (0.00 – 1.00) with mathematical trigger thresholds.</p>
+
+            <div id="signals-container" class="signals-container">
+              <!-- 8 Signal Gauges rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Decision Card & Guardrails -->
+          <div id="decision-card" class="card decision-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">⚖️</span>
+                <h3 class="card-title">Pedagogical Decision</h3>
+              </div>
+              <span id="decision-timestamp" class="card-timestamp">Awaiting evaluation</span>
+            </div>
+
+            <div class="decision-content">
+              <!-- Primary Action Banner -->
+              <div class="decision-banner-wrapper">
+                <div id="decision-kind-banner" class="decision-kind-banner banner-none">
+                  <span class="banner-icon" id="decision-banner-icon">✓</span>
+                  <div class="banner-info">
+                    <span class="banner-label">Primary Intervention Policy</span>
+                    <span class="banner-value" id="decision-banner-kind">NONE</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rationale Callout -->
+              <div class="rationale-box">
+                <span class="rationale-header">💡 Why Scholar AI Acted:</span>
+                <p id="decision-rationale-text" class="rationale-text">Click "Evaluate now" to run detection and decision policies.</p>
+              </div>
+
+              <!-- Guardrail Audit Checklist -->
+              <div class="guardrail-section">
+                <div class="guardrail-header">
+                  <span class="guardrail-title">🛡️ Guardrail Verification Checklist</span>
+                  <span id="guardrail-summary-pill" class="badge badge-success">5 / 5 Verified</span>
+                </div>
+                <ul id="guardrail-checklist" class="guardrail-checklist">
+                  <li class="guardrail-item" id="chk-consent">
+                    <span class="guardrail-status-icon">✓</span>
+                    <span class="guardrail-label">Student Consent Check:</span>
+                    <span class="guardrail-detail">Consent granted for proactive interventions</span>
+                  </li>
+                  <li class="guardrail-item" id="chk-quiet-hours">
+                    <span class="guardrail-status-icon">✓</span>
+                    <span class="guardrail-label">Active Hours Window:</span>
+                    <span class="guardrail-detail">Within daytime active hours (9:00 - 22:00)</span>
+                  </li>
+                  <li class="guardrail-item" id="chk-weekly-cap">
+                    <span class="guardrail-status-icon">✓</span>
+                    <span class="guardrail-label">Weekly Nudge Cap:</span>
+                    <span class="guardrail-detail">Under maximum allowed nudges (<= 3/week)</span>
+                  </li>
+                  <li class="guardrail-item" id="chk-cooldown">
+                    <span class="guardrail-status-icon">✓</span>
+                    <span class="guardrail-label">24h Cooldown Window:</span>
+                    <span class="guardrail-detail">No repeat interventions within 24 hours</span>
+                  </li>
+                  <li class="guardrail-item" id="chk-graded">
+                    <span class="guardrail-status-icon">✓</span>
+                    <span class="guardrail-label">Graded-Work Policy:</span>
+                    <span class="guardrail-detail">Hints and code-fences strictly forbidden on graded items</span>
+                  </li>
+                </ul>
+
+                <!-- Full Audit Log Details Accordion -->
+                <details class="audit-log-details" id="guardrail-audit-details">
+                  <summary class="audit-summary-toggle">View Full Audit Log Entries</summary>
+                  <pre id="guardrail-audit-log-text" class="audit-log-pre">No recent audit log.</pre>
+                </details>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= Column 3: Act & Follow Up ================= -->
+        <section id="col-act-followup" class="grid-column">
+          <!-- Nudge Chat Bubble -->
+          <div id="nudge-card" class="card nudge-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">💬</span>
+                <h3 class="card-title">Scholar AI Nudge</h3>
+              </div>
+              <span id="nudge-status-badge" class="badge badge-neutral">Ready</span>
+            </div>
+
+            <div class="chat-wrapper">
+              <div class="chat-bubble-container">
+                <div class="chat-avatar">
+                  <span>🤖</span>
+                </div>
+                <div class="chat-content">
+                  <div class="chat-header">
+                    <span class="chat-sender">Scholar AI</span>
+                    <span id="chat-timestamp" class="chat-time">Just now</span>
+                  </div>
+                  <div id="chat-message-body" class="chat-message">
+                    Select a student and click <strong>Evaluate now</strong> to generate tailored proactive nudges and curriculum re-plans.
+                  </div>
+                  <div id="chat-cta-wrapper" class="chat-cta-wrapper" style="display: none;">
+                    <button id="btn-nudge-cta" class="btn btn-cta">
+                      <span id="nudge-cta-text">Action CTA</span>
+                      <span class="cta-arrow">→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roadmap Re-Plan Diff Visualizer -->
+          <div id="diff-card" class="card diff-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">🔀</span>
+                <h3 class="card-title">Roadmap Before / After Diff</h3>
+              </div>
+              <div class="diff-counter-group" id="diff-counter-group">
+                <span class="diff-tag diff-tag-add" id="diff-cnt-added">+0 added</span>
+                <span class="diff-tag diff-tag-move" id="diff-cnt-moved">~0 moved</span>
+                <span class="diff-tag diff-tag-del" id="diff-cnt-removed">-0 removed</span>
+                <span class="diff-tag diff-tag-retime" id="diff-cnt-retimed">±0 retimed</span>
+              </div>
+            </div>
+
+            <div id="diff-items-container" class="diff-items-container">
+              <div class="diff-empty-notice">
+                <span class="empty-icon">✓</span>
+                <p>Roadmap unchanged; pace is aligned with schedule.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Follow-up Status History -->
+          <div id="followup-card" class="card followup-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-icon">⏱️</span>
+                <h3 class="card-title">Follow-up Outcome History</h3>
+              </div>
+              <span id="followup-current-chip" class="chip chip-pending">No Active Follow-up</span>
+            </div>
+
+            <div class="followup-content">
+              <p class="section-desc">Interventions undergo simulated 48-hour follow-up checks for recovery or escalation.</p>
+              <div id="interventions-history-list" class="interventions-history-list">
+                <div class="history-empty-notice">No recorded interventions yet.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- View 2: Cohort View -->
+    <div id="cohort-view-container" class="view-panel" role="tabpanel" aria-labelledby="tab-cohort" style="display: none;">
+      <!-- Aggregate Metrics Summary Strip -->
+      <section id="cohort-metrics-strip" class="cohort-metrics-strip">
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-emerald">
+            <span class="metric-icon">📈</span>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Recovery Rate</span>
+            <span id="metric-recovery-rate" class="metric-value">0.0%</span>
+            <span class="metric-subtext">Students recovered post-intervention</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-sky">
+            <span class="metric-icon">⏱️</span>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Avg Hours to Recover</span>
+            <span id="metric-avg-hours" class="metric-value">0.0h</span>
+            <span class="metric-subtext">Mean time from nudge to pass</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-indigo">
+            <span class="metric-icon">💬</span>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Proactive Nudges</span>
+            <span id="metric-nudges-ratio" class="metric-value">0 Sent / 0 Blocked</span>
+            <span class="metric-subtext">Respecting privacy and cooldowns</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon-wrap bg-rose">
+            <span class="metric-icon">🛡️</span>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Mentor Escalations</span>
+            <span id="metric-escalations" class="metric-value">0</span>
+            <span class="metric-subtext">Students flagged for human 1-on-1</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- At-Risk Students Table Card -->
+      <section id="cohort-table-card" class="card cohort-table-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">🚨</span>
+            <h3 class="card-title">At-Risk Student Roster (Placement Cell & Mentor View)</h3>
+          </div>
+          <span id="cohort-count-badge" class="badge badge-danger">0 At Risk</span>
+        </div>
+
+        <div class="table-responsive">
+          <table id="cohort-table" class="cohort-table">
+            <thead>
+              <tr>
+                <th scope="col">Student</th>
+                <th scope="col">Risk Status</th>
+                <th scope="col">Days at Risk</th>
+                <th scope="col">Primary Trigger Signal</th>
+                <th scope="col">Suggested Pedagogical Action</th>
+                <th scope="col">Consent</th>
+                <th scope="col" class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="cohort-table-body">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Interactive Modal Dialog -->
+  <div id="app-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h4 id="modal-title" class="modal-title">Action Details</h4>
+        <button id="modal-close" class="modal-close" aria-label="Close dialog">×</button>
+      </div>
+      <div id="modal-body" class="modal-body">
+        Modal content goes here.
+      </div>
+      <div class="modal-footer">
+        <button id="modal-ok" class="btn btn-primary">Understood</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

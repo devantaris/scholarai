@@ -103,7 +103,11 @@ def evaluate_followup(
             })
             return FollowupResult(**res_dict, next_kind="ESCALATE_MENTOR", is_due=True)
         else:
-            first_name = "there"
+            student = kwargs.get("student")
+            if not student and intervention.student_id:
+                from app.store import store
+                student = store.get_student(intervention.student_id)
+            first_name = student.name.split()[0] if student and student.name else "there"
             msg = (
                 f"Hi {first_name}, great to see you! "
                 f"Let's get your study momentum rolling today with a quick {REENGAGE_SECOND_TASK_MIN}-minute warm-up exercise."

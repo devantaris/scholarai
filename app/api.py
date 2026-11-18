@@ -267,8 +267,9 @@ def evaluate_student(id: str) -> EvaluateResponse:
             )
         elif next_action_kind == "REENGAGE" and last_eval.status == "no_response":
             # 2nd step re-engagement: smaller 5-minute task
+            first_name = s.name.split()[0] if s and s.name else "there"
             msg = (
-                f"Hi there, great to see you! "
+                f"Hi {first_name}, great to see you! "
                 f"Let's get your study momentum rolling today with a quick {REENGAGE_SECOND_TASK_MIN}-minute warm-up exercise."
             )
             cta = f"Start {REENGAGE_SECOND_TASK_MIN}-Min Task"

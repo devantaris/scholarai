@@ -205,7 +205,7 @@ def compute_inactivity(
     """
     session_events = [
         e for e in events
-        if e.type == "session" and e.ts <= now
+        if e.type in ("session", "attempt_pass", "attempt_fail") and e.ts <= now
     ]
 
     median_gap = student.median_gap_days if student.median_gap_days > 0 else 1.0

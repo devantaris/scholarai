@@ -291,3 +291,90 @@ def test_fix_5_reset_clears_interventions_cooldowns_and_nudge_counts(client: Any
     assert metrics["nudges_sent"] == 0
     assert metrics["nudges_blocked"] == 0
     assert metrics["recovery_rate"] == 0.0
+
+
+# ============================================================================
+# Fix 6 Tests: UI & Simulation Follow-up Polish (Screenshots 1-7 Verification)
+# ============================================================================
+
+def test_fix_6_reengage_second_task_personalized_name(client: Any):
+    """2nd-step re-engagement nudge addresses student by first name, not 'there'."""
+    client.post("/api/sim/reset")
+
+    # Day 0 (Nov 18): Evaluate Aarav -> CONCEPT_NUDGE
+    res0 = client.post("/api/students/aarav/evaluate")
+    assert res0.status_code == 200
+    assert res0.json()["intervention"]["kind"] == "CONCEPT_NUDGE"
+
+    # Advance 3 days (Nov 21): Aarav passes P-014, resolving stuck state
+    client.post("/api/sim/advance", json={"days": 3})
+
+    # Advance 6 more days (Nov 27): Aarav becomes inactive for 7+ days
+    client.post("/api/sim/advance", json={"days": 6})
+
+    # First re-engagement evaluation on Nov 27
+    res1 = client.post("/api/students/aarav/evaluate")
+    assert res1.status_code == 200
+    intv1 = res1.json()["intervention"]
+    assert intv1["kind"] == "REENGAGE"
+    assert "Hi Aarav" in intv1["message"]
+
+    # Advance clock past 48h window to Dec 6 with no student activity -> no_response
+    client.post("/api/sim/advance", json={"days": 9})
+
+    # Second evaluation triggers 2nd-step re-engagement (5-min task)
+    res2 = client.post("/api/students/aarav/evaluate")
+    assert res2.status_code == 200
+    intv2 = res2.json()["intervention"]
+    assert intv2["kind"] == "REENGAGE"
+    assert "5-minute" in intv2["message"]
+    # Must be personalized: 'Hi Aarav', NEVER 'Hi there'
+    assert "Hi Aarav" in intv2["message"]
+    assert "Hi there" not in intv2["message"]
+
+
+def test_fix_6_inactivity_considers_attempt_pass_as_activity(base_now: datetime, make_student: Any):
+    """Inactivity detector treats attempt_pass and attempt_fail as platform activity."""
+    student = make_student(median_gap_days=1.5)
+    # Student had session 4 days ago, but took and passed an assessment 1.0 day ago
+    events = [
+        Event(student_id=student.id, ts=base_now - timedelta(days=4), type="session", duration_min=45),
+        Event(student_id=student.id, ts=base_now - timedelta(days=1), type="attempt_pass", problem_id="P-014", duration_min=30),
+    ]
+    res = compute_inactivity(events, student, base_now)
+    # 1.0 day since last active event < 1.8 threshold
+    assert res.triggered is False
+    assert res.score == pytest.approx(1.0 / 3.0, abs=1e-2)
+    assert "1.0 days since last session" in res.evidence
+
+
+def test_fix_6_sim_advance_3_days_aarav_recovered_healthy(client: Any):
+    """Advancing 3 days after CONCEPT_NUDGE marks Aarav recovered and keeps engagement healthy."""
+    client.post("/api/sim/reset")
+
+    # Day 0: Evaluate Aarav -> CONCEPT_NUDGE
+    res_eval = client.post("/api/students/aarav/evaluate")
+    assert res_eval.status_code == 200
+    assert res_eval.json()["intervention"]["kind"] == "CONCEPT_NUDGE"
+
+    # Advance 3 days: scripts Aarav's study session and pass on P-014
+    res_adv = client.post("/api/sim/advance", json={"days": 3})
+    assert res_adv.status_code == 200
+
+    # Verify Aarav's intervention is marked recovered
+    interventions = client.get("/api/students/aarav/interventions").json()
+    assert len(interventions) >= 1
+    recovered_nudge = next(i for i in interventions if i["kind"] == "CONCEPT_NUDGE")
+    assert recovered_nudge["status"] == "recovered"
+
+    # Detail check: signals should be healthy
+    detail = client.get("/api/students/aarav").json()
+    signals = {s["name"]: s for s in detail["signals"]}
+    assert signals["stuck"]["triggered"] is False
+    assert signals["disengaged"]["triggered"] is False
+
+    # Evaluating on Day +3 returns kind='NONE'
+    res_eval3 = client.post("/api/students/aarav/evaluate")
+    assert res_eval3.status_code == 200
+    intv3 = res_eval3.json()["intervention"]
+    assert intv3["kind"] == "NONE"

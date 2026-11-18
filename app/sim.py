@@ -73,17 +73,26 @@ def advance_clock(store: Store, days: int) -> dict[str, Any]:
                 store.add_event(ev_session)
                 events_generated += 1
 
-            # Day +2 pass (at nudge.ts + 36h)
+            # Day +2 pass (at nudge.ts + 48h)
             if new_sim_now >= first_nudge.ts + timedelta(days=2) and not has_day2_pass:
+                pass_ts = first_nudge.ts + timedelta(hours=48)
                 ev_pass = Event(
                     student_id="aarav",
-                    ts=first_nudge.ts + timedelta(hours=36),
+                    ts=pass_ts,
                     type="attempt_pass",
                     problem_id="P-014",
                     duration_min=30,
                 )
                 store.add_event(ev_pass)
-                events_generated += 1
+                ev_sess = Event(
+                    student_id="aarav",
+                    ts=pass_ts,
+                    type="session",
+                    problem_id="P-014",
+                    duration_min=30,
+                )
+                store.add_event(ev_sess)
+                events_generated += 2
 
                 # Mark P-014 done in Aarav's roadmap
                 roadmap = store.get_roadmap("aarav")

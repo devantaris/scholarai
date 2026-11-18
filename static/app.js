@@ -297,7 +297,9 @@ function renderStudentProfile() {
     const diffDays = (now - ts) / (1000 * 60 * 60 * 24);
     return diffDays >= 0 && diffDays <= 7;
   }).length;
-  const nudgeCount = Math.max(deliveredLast7Days, s.weekly_nudge_count || 0);
+  const nudgeCount = (AppState.interventions && AppState.interventions.length > 0)
+    ? deliveredLast7Days
+    : (s.weekly_nudge_count || 0);
   if (nudgesEl) nudgesEl.textContent = `${nudgeCount} / 3`;
 }
 
@@ -809,17 +811,21 @@ function renderNudge() {
 
   if (chatTime) chatTime.textContent = formatSimDate(latest.ts);
 
-  // Check if message was suppressed by guardrails
-  const isSuppressed = !latest.message;
+  // Check if message was suppressed or deferred by guardrails
   const isNone = latest.kind === 'NONE';
+  const isDeferred = latest.status === 'deferred';
+  const isSuppressed = !isNone && (latest.status === 'blocked' || !latest.message);
 
   if (statusBadge) {
-    if (isSuppressed) {
-      statusBadge.className = 'badge badge-risk-high';
-      statusBadge.textContent = 'Message Suppressed';
-    } else if (isNone) {
+    if (isNone) {
       statusBadge.className = 'badge badge-risk-healthy';
       statusBadge.textContent = 'On Track';
+    } else if (isDeferred) {
+      statusBadge.className = 'badge badge-warning';
+      statusBadge.textContent = 'Message Deferred';
+    } else if (isSuppressed) {
+      statusBadge.className = 'badge badge-risk-high';
+      statusBadge.textContent = 'Message Suppressed';
     } else {
       statusBadge.className = 'badge badge-success';
       statusBadge.textContent = 'Nudge Delivered';
@@ -827,7 +833,17 @@ function renderNudge() {
   }
 
   if (messageBody) {
-    if (isSuppressed) {
+    if (isNone) {
+      messageBody.className = 'chat-message';
+      messageBody.textContent = 'Student is progressing smoothly according to their learning schedule. No intervention necessary.';
+    } else if (isDeferred) {
+      messageBody.className = 'chat-message is-deferred-notice';
+      messageBody.innerHTML = `
+        <strong>⏱️ Proactive Message Deferred</strong><br>
+        Outside active study hours. Nudge preserved and deferred until next active study window.<br>
+        <small style="margin-top: 4px; display: block; opacity: 0.85;">Telemetry logged; roadmap intact.</small>
+      `;
+    } else if (isSuppressed) {
       messageBody.className = 'chat-message is-blocked-notice';
       const guardrailReason = (latest.guardrail_log || []).find(l => l.includes('BLOCKED') || l.includes('DEFERRED')) || 'Proactive message suppressed by guardrail policy.';
       messageBody.innerHTML = `
@@ -835,9 +851,6 @@ function renderNudge() {
         ${escapeHtml(guardrailReason)}<br>
         <small style="margin-top: 4px; display: block; opacity: 0.85;">Intervention logged and visible in Mentor & Cohort dashboards.</small>
       `;
-    } else if (isNone) {
-      messageBody.className = 'chat-message';
-      messageBody.textContent = 'Student is progressing smoothly according to their learning schedule. No intervention necessary.';
     } else {
       messageBody.className = 'chat-message';
       messageBody.textContent = latest.message;
@@ -845,7 +858,7 @@ function renderNudge() {
   }
 
   if (ctaWrapper && ctaBtn && ctaText) {
-    if (!isSuppressed && latest.cta) {
+    if (!isNone && !isSuppressed && !isDeferred && latest.cta) {
       ctaWrapper.style.display = 'block';
       ctaText.textContent = latest.cta;
       ctaBtn.onclick = () => {
@@ -888,7 +901,16 @@ function renderRoadmapDiff() {
   const removed = (diff && diff.removed) || [];
   const retimed = (diff && diff.retimed) || [];
 
-  if (cntAdded) cntAdded.textContent = `+${added.length} added`;
+  const existingRoadmap = (AppState.studentDetail && AppState.studentDetail.roadmap) || [];
+  const newlyAdded = added.filter(item => {
+    const cleanTitle = (item.title || item.id).toLowerCase().replace(/^micro-lesson:\s*/i, '').trim();
+    return !existingRoadmap.some(r =>
+      r.id.toLowerCase() === item.id.toLowerCase() ||
+      (r.title && cleanTitle && (r.title.toLowerCase().includes(cleanTitle) || cleanTitle.includes(r.title.toLowerCase())))
+    );
+  });
+
+  if (cntAdded) cntAdded.textContent = `+${newlyAdded.length} added`;
   if (cntMoved) cntMoved.textContent = `~${moved.length} moved`;
   if (cntDel) cntDel.textContent = `-${removed.length} removed`;
   if (cntRetime) cntRetime.textContent = `±${retimed.length} retimed`;
@@ -907,7 +929,6 @@ function renderRoadmapDiff() {
 
   let html = '';
 
-  const existingRoadmap = (AppState.studentDetail && AppState.studentDetail.roadmap) || [];
   added.forEach(item => {
     // Check if concept already exists on the roadmap
     const cleanTitle = (item.title || item.id).toLowerCase().replace(/^micro-lesson:\s*/i, '').trim();
